@@ -11,9 +11,10 @@ version: v1.0
 """
 import numpy as np
 import utils.utils as utils
+import scipy.linalg
 
 
-def reduce_dimensions(feature_vectors_full, model):
+def reduce_dimensions(feature_vectors_full, model, mode=0):
     """Dummy methods that just takes 1st 10 pixels.
 
     Params:
@@ -22,7 +23,21 @@ def reduce_dimensions(feature_vectors_full, model):
     model - a dictionary storing the outputs of the model
        training stage
     """
-    return feature_vectors_full[:, 0:10]
+    if mode == 0:
+        # Compute PCA
+        covx = np.cov(feature_vectors_full, rowvar=0)
+        N = covx.shape[0]
+        w, v = scipy.linalg.eigh(covx, eigvals=(N - 40, N - 1))
+        model['v'] = v.tolist()
+        v = np.fliplr(v)
+        pcatrain_data = np.dot((feature_vectors_full - np.mean(feature_vectors_full)), v)
+        return pcatrain_data[:, 2:12]
+
+    else:
+        v = np.array(model['v'])
+        v = np.fliplr(v)
+        pcatest_data = np.dot((feature_vectors_full - np.mean(feature_vectors_full)), v)
+        return pcatest_data[:, 2:12]
 
 
 def get_bounding_box_size(images):
@@ -88,7 +103,7 @@ def process_training_data(train_page_names):
     model_data['bbox_size'] = bbox_size
 
     print('Reducing to 10 dimensions')
-    fvectors_train = reduce_dimensions(fvectors_train_full, model_data)
+    fvectors_train = reduce_dimensions(fvectors_train_full, model_data, 0)
 
     model_data['fvectors_train'] = fvectors_train.tolist()
     return model_data
@@ -108,7 +123,7 @@ def load_test_page(page_name, model):
     images_test = utils.load_char_images(page_name)
     fvectors_test = images_to_feature_vectors(images_test, bbox_size)
     # Perform the dimensionality reduction.
-    fvectors_test_reduced = reduce_dimensions(fvectors_test, model)
+    fvectors_test_reduced = reduce_dimensions(fvectors_test, model, 1)
     return fvectors_test_reduced
 
 
@@ -120,9 +135,18 @@ def classify_page(page, model):
     page - matrix, each row is a feature vector to be classified
     model - dictionary, stores the output of the training stage
     """
-    fvectors_train = np.array(model['fvectors_train'])
+    train = np.array(model['fvectors_train'])
     labels_train = np.array(model['labels_train'])
-    return np.repeat(labels_train[0], len(page))
+
+    # Super compact implementation of nearest neighbour
+    x = np.dot(page, train.transpose())
+    modtest = np.sqrt(np.sum(page * page, axis=1))
+    modtrain = np.sqrt(np.sum(train * train, axis=1))
+    dist = x / np.outer(modtest, modtrain.transpose())  # cosine distance
+    nearest = np.argmax(dist, axis=1)
+    label = labels_train[nearest]
+
+    return label
 
 
 def correct_errors(page, labels, bboxes, model):
