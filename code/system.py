@@ -15,29 +15,34 @@ import scipy.linalg
 
 
 def reduce_dimensions(feature_vectors_full, model, mode=0):
-    """Dummy methods that just takes 1st 10 pixels.
+    """Use PCA to reduce dimensions
 
     Params:
     feature_vectors_full - feature vectors stored as rows
        in a matrix
     model - a dictionary storing the outputs of the model
        training stage
+    mode - a integer (0 or 1) to select option
+        If mode = 0, use given train matrix to compute principle components
+        and store v into the dictionary.
+        If mode = 1, grab v already exists in the dictionary.
     """
     if mode == 0:
-        # Compute PCA
+        # Compute principle components
         covx = np.cov(feature_vectors_full, rowvar=0)
         N = covx.shape[0]
         w, v = scipy.linalg.eigh(covx, eigvals=(N - 40, N - 1))
         model['v'] = v.tolist()
         v = np.fliplr(v)
         pcatrain_data = np.dot((feature_vectors_full - np.mean(feature_vectors_full)), v)
-        return pcatrain_data[:, 2:12]
+        return pcatrain_data[:, 1:11]
 
     else:
+
         v = np.array(model['v'])
         v = np.fliplr(v)
         pcatest_data = np.dot((feature_vectors_full - np.mean(feature_vectors_full)), v)
-        return pcatest_data[:, 2:12]
+        return pcatest_data[:, 1:11]
 
 
 def get_bounding_box_size(images):
@@ -128,9 +133,10 @@ def load_test_page(page_name, model):
 
 
 def classify_page(page, model):
-    """Dummy classifier. Always returns first label.
+    """Nearest neighbor classifier
 
-    parameters:
+
+    Params:
 
     page - matrix, each row is a feature vector to be classified
     model - dictionary, stores the output of the training stage
@@ -152,7 +158,7 @@ def classify_page(page, model):
 def correct_errors(page, labels, bboxes, model):
     """Dummy error correction. Returns labels unchanged.
 
-    parameters:
+    Params:
 
     page - 2d array, each row is a feature vector to be classified
     labels - the output classification label for each feature vector
