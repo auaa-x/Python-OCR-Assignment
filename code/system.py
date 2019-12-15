@@ -150,13 +150,13 @@ def classify_page(page, model):
     modtrain = np.sqrt(np.sum(train * train, axis=1))
     dist = x / np.outer(modtest, modtrain.transpose())  # cosine distance
     nearest = np.argmax(dist, axis=1)
-    label = labels_train[nearest]
+    labels = labels_train[nearest]
 
-    return label
+    return labels
 
 
 def correct_errors(page, labels, bboxes, model):
-    """Dummy error correction. Returns labels unchanged.
+    """Error correction
 
     Params:
 
@@ -165,4 +165,40 @@ def correct_errors(page, labels, bboxes, model):
     bboxes - 2d array, each row gives the 4 bounding box coords of the character
     model - dictionary, stores the output of the training stage
     """
+    labels_to_words(labels, bboxes)
+
     return labels
+
+
+def labels_to_words(labels, bboxes):
+    """Separate labels into words
+
+    Takes labels and box sizes to return list of separated words
+
+    Params:
+
+    labels - the output classification label for each feature vector
+    bboxes - 2d array, each row gives the 4 bounding box coords of the character
+    """
+    words_list = []
+
+    counter = 0
+    word = labels[0]
+    for i in range(1, len(labels)):
+        # check if the space between two labels is less than 7
+        # if less than 7 then considered a part of a word
+        if 7 > bboxes[i, 0] - bboxes[i - 1, 2] > -10:
+            # if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] !=
+            # '?' and labels[i] != ';'):
+            word += labels[i]
+
+        # else if larger than 7 then append the current processing word to the list
+        else:
+            words_list.append(word)
+            if counter < 20:
+                print(word)
+                counter += 1
+            # if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] != '?'
+            # and labels[i] != ';'):
+            word = labels[i]
+    return words_list
