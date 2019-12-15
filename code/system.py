@@ -9,13 +9,16 @@ dummy implementations that do not do anything useful.
 
 version: v1.0
 """
+import difflib
+
 import numpy as np
 import utils.utils as utils
 import scipy.linalg
 
 
 def reduce_dimensions(feature_vectors_full, model, mode=0):
-    """Use PCA to reduce dimensions
+    """
+    Use PCA to reduce dimensions
 
     Params:
     feature_vectors_full - feature vectors stored as rows
@@ -53,7 +56,8 @@ def get_bounding_box_size(images):
 
 
 def images_to_feature_vectors(images, bbox_size=None):
-    """Reformat characters into feature vectors.
+    """
+    Reformat characters into feature vectors.
 
     Takes a list of images stored as 2D-arrays and returns
     a matrix in which each row is a fixed length feature vector
@@ -86,7 +90,8 @@ def images_to_feature_vectors(images, bbox_size=None):
 # and evaluate.py and need to be provided.
 
 def process_training_data(train_page_names):
-    """Perform the training stage and return results in a dictionary.
+    """
+    Perform the training stage and return results in a dictionary.
 
     Params:
     train_page_names - list of training page names
@@ -103,9 +108,14 @@ def process_training_data(train_page_names):
     bbox_size = get_bounding_box_size(images_train)
     fvectors_train_full = images_to_feature_vectors(images_train, bbox_size)
 
+    print('Loading dictionary')
+    dc = []
+    dc = load_dc('dc', dc)
+
     model_data = dict()
     model_data['labels_train'] = labels_train.tolist()
     model_data['bbox_size'] = bbox_size
+    model_data['dictionary'] = dc
 
     print('Reducing to 10 dimensions')
     fvectors_train = reduce_dimensions(fvectors_train_full, model_data, 0)
@@ -114,8 +124,23 @@ def process_training_data(train_page_names):
     return model_data
 
 
+def load_dc(filename='dc', dc=None):
+    """
+    :param filename:
+    :param dc:
+    :return:
+    """
+    if dc is None:
+        dc = []
+    with open(filename + '.txt', 'r') as f:
+        word = f.read().split("\n")
+        dc.append(word)
+    return dc
+
+
 def load_test_page(page_name, model):
-    """Load test data page.
+    """
+    Load test data page.
 
     This function must return each character as a 10-d feature
     vector with the vectors stored as rows of a matrix.
@@ -133,7 +158,8 @@ def load_test_page(page_name, model):
 
 
 def classify_page(page, model):
-    """Nearest neighbor classifier
+    """
+    Nearest neighbor classifier
 
 
     Params:
@@ -156,7 +182,8 @@ def classify_page(page, model):
 
 
 def correct_errors(page, labels, bboxes, model):
-    """Error correction
+    """
+    Error correction
 
     Params:
 
@@ -165,40 +192,34 @@ def correct_errors(page, labels, bboxes, model):
     bboxes - 2d array, each row gives the 4 bounding box coords of the character
     model - dictionary, stores the output of the training stage
     """
-    labels_to_words(labels, bboxes)
+    updated_labels = []
 
-    return labels
-
-
-def labels_to_words(labels, bboxes):
-    """Separate labels into words
-
-    Takes labels and box sizes to return list of separated words
-
-    Params:
-
-    labels - the output classification label for each feature vector
-    bboxes - 2d array, each row gives the 4 bounding box coords of the character
-    """
-    words_list = []
-
-    counter = 0
     word = labels[0]
+
+    dc = np.array(model['dictionary'])
     for i in range(1, len(labels)):
         # check if the space between two labels is less than 7
         # if less than 7 then considered a part of a word
         if 7 > bboxes[i, 0] - bboxes[i - 1, 2] > -10:
-            # if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] !=
-            # '?' and labels[i] != ';'):
             word += labels[i]
 
         # else if larger than 7 then append the current processing word to the list
         else:
-            words_list.append(word)
-            if counter < 20:
-                print(word)
-                counter += 1
-            # if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] != '?'
-            # and labels[i] != ';'):
+            if (labels[i] != '.' and labels[i] != ',' and labels[i] != ':' and labels[i] != '!' and labels[i] !='?' and
+                    labels[i] != ';'):
+                if word in dc:
+                    updated_labels.extend(list(match_word))
+
+                else:
+                    # match the closest word in the dictionary
+                    match_list = difflib.get_close_matches(word, dc[0])
+                    if not match_list:
+                        match_word = word
+                    else:
+                        match_word = match_list[0]
+                        updated_labels.extend(list(match_word))
+
             word = labels[i]
-    return words_list
+
+    return np.array(updated_labels)
+
