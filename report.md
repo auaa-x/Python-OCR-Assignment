@@ -16,7 +16,8 @@ knn classifier can perform very well on noisy page as follows:
 - Page 3: score = 81.5% correct
 - Page 4: score = 65.6% correct
 - Page 5: score = 51.9% correct
-- Page 6: score = 43.9% correct
+- Page 6: score = 43.9% correct  
+
 It is obvious that the score for noisy pages is improved, but that of
 clean page does decrease. And it is confused to find how to determine
 a page is noisy or not, then knn classifier not actually included. But
